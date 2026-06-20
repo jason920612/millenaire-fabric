@@ -2,6 +2,7 @@ package org.millenaire;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -83,7 +84,10 @@ public final class Millenaire implements ModInitializer {
 		// L2/L3 bridge: debug wand builds a schematic where you right-click.
 		MillInteractions.register();
 
-		// MillWorld: active/inactive proximity state machine (INTENT.md doc 02).
+		// MillWorld: release any chunks left force-loaded by a previous session, then run the
+		// active/inactive proximity state machine each tick (INTENT.md doc 02).
+		ServerLifecycleEvents.SERVER_STARTED.register(
+				server -> org.millenaire.world.MillWorld.releaseAllForcedChunksOnStart(server.overworld()));
 		ServerTickEvents.END_SERVER_TICK.register(server -> org.millenaire.world.MillWorld.tick(server.overworld()));
 
 		// Headless gameplay verification via a fake player (env-gated).

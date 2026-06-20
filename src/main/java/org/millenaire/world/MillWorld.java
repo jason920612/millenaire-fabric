@@ -1,9 +1,10 @@
 package org.millenaire.world;
 
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.entity.Entity;
 import org.millenaire.Millenaire;
 import org.millenaire.entity.MillVillagerEntity;
 import org.millenaire.entity.ai.VillagerScheduler;
@@ -53,11 +54,19 @@ public final class MillWorld {
 				setVillageChunksForced(overworld, t.centre(), true);
 				// Active behaviour: drive gradual construction (L3) and the villager scheduler (L4).
 				Construction.tick(overworld, t, data);
-				// Search a full-height column around the centre: village Y may differ from the centre's
-				// recorded Y (it is the founding click), so don't constrain the vertical range tightly.
-				for (MillVillagerEntity villager : overworld.getEntitiesOfClass(
-						MillVillagerEntity.class, new AABB(t.centre()).inflate(96, 400, 96))) {
-					VillagerScheduler.tick(villager, overworld, t);
+				// The TownHall OWNS its villagers by UUID — tick exactly those, not whoever is nearby.
+				int missing = 0;
+				for (UUID villagerId : t.villagers()) {
+					Entity e = overworld.getEntity(villagerId);
+					if (e instanceof MillVillagerEntity villager && villager.isAlive()) {
+						VillagerScheduler.tick(villager, overworld, t);
+					} else {
+						missing++; // not loaded / dead — repair (re-spawn / drop record) is future work
+					}
+				}
+				if (report && missing > 0) {
+					Millenaire.LOGGER.info("MillWorld: village '{}' has {}/{} villager(s) not loaded",
+							t.name(), missing, t.villagers().size());
 				}
 			}
 		}
@@ -74,6 +83,24 @@ public final class MillWorld {
 
 	/** Chunk radius (in chunks) force-loaded around an active village's centre. */
 	private static final int FORCE_CHUNK_RADIUS = 2;
+
+	/**
+	 * On server start, release any chunks left force-loaded by a previous session (#6). {@code active}
+	 * is runtime-only, so a server stopped while a village was active would otherwise leave its chunks
+	 * forced with no {@code true->false} transition to release them. We deterministically unforce every
+	 * known village's region; the active tick re-forces the ones that should be active again.
+	 */
+	public static void releaseAllForcedChunksOnStart(ServerLevel overworld) {
+		MillWorldData data = MillWorldData.get(overworld);
+		for (TownHall t : data.townHalls()) {
+			t.setActive(false);
+			setVillageChunksForced(overworld, t.centre(), false);
+		}
+		if (data.townHallCount() > 0) {
+			Millenaire.LOGGER.info("MillWorld: released leftover forced chunks for {} village(s) on startup",
+					data.townHallCount());
+		}
+	}
 
 	private static void setVillageChunksForced(ServerLevel level, BlockPos centre, boolean forced) {
 		int ccx = centre.getX() >> 4;
