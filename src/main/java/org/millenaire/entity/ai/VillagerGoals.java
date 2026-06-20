@@ -62,8 +62,9 @@ public final class VillagerGoals {
 			boolean defined = GoalDefinitions.get(k).isPresent();
 			GenericGoalDefinition def = GoalDefinitions.get(k).orElseGet(() -> GenericGoalDefinition.placeholder(k));
 			if (org.millenaire.Millenaire.LOG_VILLAGER_GOALS) {
-				org.millenaire.Millenaire.LOGGER.info("Generic goal '{}': priority={} duration={}t dest='{}'{}",
-						def.key(), def.priority(), def.duration(), def.destinationTag(), defined ? "" : " (placeholder/hard-coded)");
+				org.millenaire.Millenaire.LOGGER.info("Generic goal '{}': priority={} duration={}t dest='{}' requires='{}'{}",
+						def.key(), def.priority(), def.duration(), def.destinationTag(), def.requiredTag(),
+						defined ? "" : " (placeholder/hard-coded)");
 			}
 			return new GenericGoal(def);
 		});

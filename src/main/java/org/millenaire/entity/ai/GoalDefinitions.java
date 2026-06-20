@@ -49,6 +49,11 @@ public final class GoalDefinitions {
 		} catch (Exception e) {
 			Millenaire.LOGGER.error("GoalDefinitions: failed to scan {}", goalsDir, e);
 		}
-		Millenaire.LOGGER.info("GoalDefinitions: loaded {} goal definition(s) from {}", DEFS.size(), goalsDir.getFileName());
+		long buildingDest = DEFS.values().stream()
+				.filter(d -> !d.destinationTag().isEmpty() && !GenericGoalDefinition.TOWNHALL.equals(d.destinationTag())).count();
+		long townhall = DEFS.values().stream().filter(d -> GenericGoalDefinition.TOWNHALL.equals(d.destinationTag())).count();
+		long required = DEFS.values().stream().filter(d -> !d.requiredTag().isEmpty()).count();
+		Millenaire.LOGGER.info("GoalDefinitions: loaded {} goal definition(s) ({} buildingTag dest, {} townhall, {} requiredTag)",
+				DEFS.size(), buildingDest, townhall, required);
 	}
 }

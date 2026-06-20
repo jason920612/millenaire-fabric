@@ -87,7 +87,9 @@ public final class VillageGenerator {
 				centreOrigin = origin;
 			}
 			// Schedule the building as a construction project; the active village builds it gradually (L3).
-			townHall.addBuilding(new BuildingProject(plan.get().key(), plan.get().variant(), slot.role(), origin, 0, orientation));
+			List<String> buildingTags = plan.get().levels().get(0).config().all("tag").stream()
+					.map(s -> s.toLowerCase(java.util.Locale.ROOT)).toList();
+			townHall.addBuilding(new BuildingProject(plan.get().key(), plan.get().variant(), slot.role(), origin, 0, orientation, buildingTags));
 			Millenaire.LOGGER.info("  scheduled {} '{}_{}' at {} (orientation {})",
 					slot.role(), plan.get().key(), plan.get().variant(), origin, orientation);
 		}

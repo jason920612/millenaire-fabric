@@ -2,6 +2,7 @@ package org.millenaire.world;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 
 /**
@@ -29,7 +30,8 @@ public final class BuildingProject {
 			Codec.INT.fieldOf("cursor").forGetter(b -> b.cursor),
 			Codec.INT.fieldOf("pass").forGetter(b -> b.pass),
 			Codec.BOOL.fieldOf("done").forGetter(b -> b.done),
-			Codec.BOOL.optionalFieldOf("blocked", false).forGetter(b -> b.blocked)
+			Codec.BOOL.optionalFieldOf("blocked", false).forGetter(b -> b.blocked),
+			Codec.STRING.listOf().optionalFieldOf("tags", List.of()).forGetter(b -> b.tags)
 	).apply(i, BuildingProject::new));
 
 	private final String key;
@@ -43,9 +45,11 @@ public final class BuildingProject {
 	private boolean done;
 	/** Construction cannot proceed (e.g. plan not found) — surfaced, not silently "done". */
 	private boolean blocked;
+	/** The building's tags (from the plan's {@code tag:} fields) — used to resolve goal destinations. */
+	private final List<String> tags;
 
 	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation,
-			int cursor, int pass, boolean done, boolean blocked) {
+			int cursor, int pass, boolean done, boolean blocked, List<String> tags) {
 		this.key = key;
 		this.variant = variant;
 		this.role = role;
@@ -56,11 +60,21 @@ public final class BuildingProject {
 		this.pass = pass;
 		this.done = done;
 		this.blocked = blocked;
+		this.tags = List.copyOf(tags);
 	}
 
 	/** A fresh, unbuilt project. */
-	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation) {
-		this(key, variant, role, origin, level, orientation, 0, 0, false, false);
+	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation,
+			List<String> tags) {
+		this(key, variant, role, origin, level, orientation, 0, 0, false, false, tags);
+	}
+
+	public List<String> tags() {
+		return tags;
+	}
+
+	public boolean hasTag(String tag) {
+		return tags.contains(tag);
 	}
 
 	public String key() {

@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
@@ -87,6 +88,23 @@ public final class TownHall {
 
 	public void addBuilding(BuildingProject b) {
 		buildings.add(b);
+	}
+
+	/**
+	 * Find a building carrying {@code buildingTag} (and {@code requiredTag} if given) — the destination
+	 * resolution for a {@link org.millenaire.entity.ai.GenericGoalDefinition}. {@code requiredTag} models
+	 * the upgrade/unlock gating (the building must also have that tag).
+	 */
+	public Optional<BuildingProject> findBuildingByTag(String buildingTag, String requiredTag) {
+		if (buildingTag == null || buildingTag.isEmpty()) {
+			return Optional.empty();
+		}
+		for (BuildingProject b : buildings) {
+			if (b.hasTag(buildingTag) && (requiredTag == null || requiredTag.isEmpty() || b.hasTag(requiredTag))) {
+				return Optional.of(b);
+			}
+		}
+		return Optional.empty();
 	}
 
 	public void addVillager(VillagerMember member) {
