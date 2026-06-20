@@ -111,10 +111,17 @@ public final class VillageGenerator {
 						MillVillagerEntity.spawn(level, null, vname, vtype, home, MillWorld.forceActiveForTest);
 				if (spawned.isPresent()) {
 					villagers++;
-					townHall.addVillager(new VillagerMember(spawned.get().getUUID(), vname, vtype, home));
+					// Home building = the centre for now (until residential assignment exists).
+					townHall.addVillager(new VillagerMember(spawned.get().getUUID(), vname, vtype, home, centreOrigin));
 				}
 			}
 			Millenaire.LOGGER.info("  spawned {} villagers near centre {}", villagers, centreOrigin);
+		}
+
+		// Test seed: give the village some raw goods so a crafting villager can actually work
+		// (e.g. alchemistapprentice -> makeglassbottles needs glass). Real production chains feed this later.
+		if (MillWorld.forceActiveForTest) {
+			townHall.addGood("glass", 200);
 		}
 
 		// Register the Town Hall aggregate into the MillWorld persistent index (single source of truth).

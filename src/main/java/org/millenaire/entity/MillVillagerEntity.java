@@ -29,6 +29,8 @@ public class MillVillagerEntity extends PathfinderMob {
 	private String goalKey = "";
 	private BlockPos goalTarget;
 	private long goalStartTime;
+	/** Game time of the villager's last completed work action (e.g. a craft) — paces production. */
+	private long lastActionTime;
 	/** Villager type key (e.g. {@code carpenter}); drives the data-driven candidate goals. */
 	private String villagerType = "";
 
@@ -98,6 +100,14 @@ public class MillVillagerEntity extends PathfinderMob {
 		this.goalStartTime = time;
 	}
 
+	public long getLastActionTime() {
+		return lastActionTime;
+	}
+
+	public void setLastActionTime(long time) {
+		this.lastActionTime = time;
+	}
+
 	public String getVillagerType() {
 		return villagerType;
 	}
@@ -112,6 +122,7 @@ public class MillVillagerEntity extends PathfinderMob {
 		output.putString("MillGoalKey", goalKey);
 		output.putString("MillType", villagerType);
 		output.putLong("MillGoalStart", goalStartTime);
+		output.putLong("MillLastAction", lastActionTime);
 		output.putLong("MillGoalTarget", goalTarget == null ? Long.MIN_VALUE : goalTarget.asLong());
 	}
 
@@ -121,6 +132,7 @@ public class MillVillagerEntity extends PathfinderMob {
 		goalKey = input.getStringOr("MillGoalKey", "");
 		villagerType = input.getStringOr("MillType", "");
 		goalStartTime = input.getLongOr("MillGoalStart", 0L);
+		lastActionTime = input.getLongOr("MillLastAction", 0L);
 		long t = input.getLongOr("MillGoalTarget", Long.MIN_VALUE);
 		goalTarget = t == Long.MIN_VALUE ? null : BlockPos.of(t);
 	}

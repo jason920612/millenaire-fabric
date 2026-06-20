@@ -88,6 +88,19 @@ public final class FakePlayerProbe {
 					Millenaire.LOGGER.info("Gating check: makejgboots(requiredTag=armoury)={} (expect false), "
 							+ "makecalva(buildingTag=cider)={} (expect false), cookindianbrick(townhall)={} (expect true)",
 							reqOnly, buildingDest, townhall);
+
+					// ResManager self-check: extract named work positions from the centre building's schematic.
+					th0.buildings().stream().filter(b -> b.role().equals("centre")).findFirst().ifPresent(centreB ->
+							org.millenaire.content.MillContent.building(th0.culture(), centreB.key() + "_" + centreB.variant())
+									.ifPresent(plan -> {
+										var rm = org.millenaire.building.BuildingResManagers.forBuilding(plan, centreB);
+										Millenaire.LOGGER.info("ResManager '{}_{}': mainChest={}, craftingPos={}, sleepingPos={}, sellingPos={}",
+												centreB.key(), centreB.variant(),
+												rm.get(org.millenaire.building.ResManager.MAIN_CHEST).size(),
+												rm.get(org.millenaire.building.ResManager.CRAFTING).size(),
+												rm.get(org.millenaire.building.ResManager.SLEEPING).size(),
+												rm.get(org.millenaire.building.ResManager.SELLING).size());
+									}));
 				}
 
 				fake.discard();

@@ -4,7 +4,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -26,7 +28,8 @@ public final class TownHall {
 			Codec.STRING.fieldOf("type").forGetter(t -> t.villageType),
 			Codec.STRING.fieldOf("name").forGetter(t -> t.name),
 			BuildingProject.CODEC.listOf().fieldOf("buildings").forGetter(t -> t.buildings),
-			VillagerMember.CODEC.listOf().fieldOf("villagers").forGetter(t -> t.villagers)
+			VillagerMember.CODEC.listOf().fieldOf("villagers").forGetter(t -> t.villagers),
+			Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("goods", Map.of()).forGetter(t -> t.goods)
 	).apply(i, TownHall::new));
 
 	private final UUID id;
@@ -36,6 +39,8 @@ public final class TownHall {
 	private final String name;
 	private final List<BuildingProject> buildings;
 	private final List<VillagerMember> villagers;
+	/** Village goods inventory (good name &rarr; count) — the shared stock generic crafting draws from / fills. */
+	private final Map<String, Integer> goods;
 
 	/** Runtime only — not persisted. */
 	private transient boolean active;
@@ -43,7 +48,7 @@ public final class TownHall {
 	private transient long activeSince;
 
 	public TownHall(UUID id, BlockPos centre, String culture, String villageType, String name,
-			List<BuildingProject> buildings, List<VillagerMember> villagers) {
+			List<BuildingProject> buildings, List<VillagerMember> villagers, Map<String, Integer> goods) {
 		this.id = id;
 		this.centre = centre;
 		this.culture = culture;
@@ -51,11 +56,49 @@ public final class TownHall {
 		this.name = name;
 		this.buildings = new ArrayList<>(buildings);
 		this.villagers = new ArrayList<>(villagers);
+		this.goods = new HashMap<>(goods);
 	}
 
 	/** Create a fresh Town Hall with a new stable id and empty contents. */
 	public static TownHall create(BlockPos centre, String culture, String villageType, String name) {
-		return new TownHall(UUID.randomUUID(), centre, culture, villageType, name, new ArrayList<>(), new ArrayList<>());
+		return new TownHall(UUID.randomUUID(), centre, culture, villageType, name,
+				new ArrayList<>(), new ArrayList<>(), new HashMap<>());
+	}
+
+	// --- goods inventory (generic crafting) ---------------------------------------------------
+
+	public int countGood(String good) {
+		return goods.getOrDefault(good.toLowerCase(java.util.Locale.ROOT), 0);
+	}
+
+	public void addGood(String good, int qty) {
+		goods.merge(good.toLowerCase(java.util.Locale.ROOT), qty, Integer::sum);
+	}
+
+	/** Remove up to {@code qty}; returns true if there was enough. */
+	public boolean removeGood(String good, int qty) {
+		String k = good.toLowerCase(java.util.Locale.ROOT);
+		int have = goods.getOrDefault(k, 0);
+		if (have < qty) {
+			return false;
+		}
+		goods.put(k, have - qty);
+		return true;
+	}
+
+	// --- member / building lookups ------------------------------------------------------------
+
+	public Optional<VillagerMember> memberFor(UUID villagerId) {
+		return villagers.stream().filter(m -> m.id().equals(villagerId)).findFirst();
+	}
+
+	public Optional<BuildingProject> buildingAt(BlockPos origin) {
+		return buildings.stream().filter(b -> b.origin().equals(origin)).findFirst();
+	}
+
+	/** The building a villager belongs to (its {@code homeBuilding}), if resolvable. */
+	public Optional<BuildingProject> homeBuildingFor(VillagerMember member) {
+		return member == null ? Optional.empty() : buildingAt(member.homeBuilding());
 	}
 
 	public UUID id() {

@@ -2,8 +2,10 @@ package org.millenaire.entity.ai;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 import org.millenaire.content.Dsl;
+import org.millenaire.content.economy.GoodStack;
 
 /**
  * A data-driven goal definition parsed from {@code millenaire/goals/**} (INTENT.md doc 01 — each file
@@ -17,14 +19,24 @@ import org.millenaire.content.Dsl;
  * @param destinationTag {@code "townhall"}, a building {@code buildingTag}, or {@code ""} for the house
  * @param requiredTag    extra tag the destination building must also have ({@code ""} = none) — models
  *                       the upgrade/unlock gating (e.g. {@code makecalva} needs a {@code cider} building)
+ * @param inputs         goods consumed per craft action (genericcrafting/cooking)
+ * @param outputs        goods produced per craft action
+ * @param limitGood      good whose count in the building/townhall caps production ({@code ""} = no cap)
+ * @param limitMax       max count of {@code limitGood} before the goal stops
  */
-public record GenericGoalDefinition(String key, int priority, int duration, String destinationTag, String requiredTag) {
+public record GenericGoalDefinition(String key, int priority, int duration, String destinationTag, String requiredTag,
+		List<GoodStack> inputs, List<GoodStack> outputs, String limitGood, int limitMax) {
 
 	public static final String TOWNHALL = "townhall";
 
+	public boolean isCrafting() {
+		return !outputs.isEmpty();
+	}
+
 	/** Default placeholder for a goal key with no {@code goals/} definition (e.g. hard-coded keys). */
 	public static GenericGoalDefinition placeholder(String key) {
-		return new GenericGoalDefinition(key.toLowerCase(Locale.ROOT), 35, 100, "", "");
+		return new GenericGoalDefinition(key.toLowerCase(Locale.ROOT), 35, 100, "", "",
+				List.of(), List.of(), "", Integer.MAX_VALUE);
 	}
 
 	/** Parse one {@code goals/**.txt} definition file. */
@@ -39,6 +51,17 @@ public record GenericGoalDefinition(String key, int priority, int duration, Stri
 		String buildingTag = r.first("buildingtag").orElse("").toLowerCase(Locale.ROOT);
 		String requiredTag = r.first("requiredtag").orElse("").toLowerCase(Locale.ROOT);
 		String destination = r.firstBool("townhallgoal", false) ? TOWNHALL : buildingTag;
-		return new GenericGoalDefinition(key, priority, durationTicks, destination, requiredTag);
+
+		List<GoodStack> inputs = r.all("input").stream().map(GoodStack::parse).toList();
+		List<GoodStack> outputs = r.all("output").stream().map(GoodStack::parse).toList();
+		String limitGood = "";
+		int limitMax = Integer.MAX_VALUE;
+		if (r.has("buildinglimit")) {
+			GoodStack bl = GoodStack.parse(r.first("buildinglimit").get());
+			limitGood = bl.good();
+			limitMax = bl.qty();
+		}
+		return new GenericGoalDefinition(key, priority, durationTicks, destination, requiredTag,
+				inputs, outputs, limitGood, limitMax);
 	}
 }

@@ -1,17 +1,26 @@
 package org.millenaire.entity.ai;
 
+import java.util.Optional;
+import java.util.stream.Collectors;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
+import org.millenaire.Millenaire;
+import org.millenaire.building.BuildingResManagers;
+import org.millenaire.building.ResManager;
+import org.millenaire.content.MillContent;
+import org.millenaire.content.building.BuildingPlan;
+import org.millenaire.content.economy.GoodStack;
 import org.millenaire.entity.MillVillagerEntity;
 import org.millenaire.world.BuildingProject;
 import org.millenaire.world.TownHall;
 
 /**
  * A {@link VillagerGoal} backed by a {@link GenericGoalDefinition} — the data-driven goals a villager
- * gets from its type's {@code goal=} list. Stateless singleton per definition (cached in
- * {@link VillagerGoals}). Behaviour for this slice is a short local stroll for {@code duration} ticks;
- * real per-goal behaviour (craft / go to a tagged building / etc.) lands with issues #3/#4.
+ * gets from its type's {@code goal=} list (intent doc 01 §5.1). Resolves the destination (townhall /
+ * tagged building / the villager's home building), travels to the building's craftingPos (via
+ * {@link ResManager}), and — for crafting goals — performs the recipe on arrival: deduct inputs, add
+ * outputs to the village stock, respecting the building limit.
  */
 public final class GenericGoal implements VillagerGoal {
 
@@ -26,21 +35,42 @@ public final class GenericGoal implements VillagerGoal {
 		return def.key();
 	}
 
-	@Override
-	public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
-		// Building/unlock gating (docs): the destination building must exist (with requiredTag); and even
-		// for house/default-destination goals, a non-empty requiredTag must be satisfied by some building.
-		if (isBuildingDestination()) {
-			return townHall.findBuildingByTag(def.destinationTag(), def.requiredTag()).isPresent();
-		}
-		if (!def.requiredTag().isEmpty()) {
-			return townHall.findBuildingByTag(def.requiredTag(), "").isPresent();
-		}
-		return true;
-	}
-
 	private boolean isBuildingDestination() {
 		return !def.destinationTag().isEmpty() && !GenericGoalDefinition.TOWNHALL.equals(def.destinationTag());
+	}
+
+	/** The building this goal works at: the tagged building, or the villager's home building. */
+	private Optional<BuildingProject> destinationBuilding(MillVillagerEntity v, TownHall townHall) {
+		if (isBuildingDestination()) {
+			return townHall.findBuildingByTag(def.destinationTag(), def.requiredTag());
+		}
+		return townHall.memberFor(v.getUUID()).flatMap(townHall::homeBuildingFor);
+	}
+
+	@Override
+	public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		// Building / unlock gating.
+		if (isBuildingDestination()) {
+			if (townHall.findBuildingByTag(def.destinationTag(), def.requiredTag()).isEmpty()) {
+				return false;
+			}
+		} else if (!def.requiredTag().isEmpty()) {
+			if (townHall.findBuildingByTag(def.requiredTag(), "").isEmpty()) {
+				return false;
+			}
+		}
+		// Crafting gating: must have all inputs and be under the building limit (docs' "produce until full").
+		if (def.isCrafting()) {
+			if (!def.limitGood().isEmpty() && townHall.countGood(def.limitGood()) >= def.limitMax()) {
+				return false;
+			}
+			for (GoodStack in : def.inputs()) {
+				if (townHall.countGood(in.good()) < in.qty()) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	@Override
@@ -52,25 +82,80 @@ public final class GenericGoal implements VillagerGoal {
 	public void start(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
 		BlockPos dest;
 		if (GenericGoalDefinition.TOWNHALL.equals(def.destinationTag())) {
-			dest = townHall.centre(); // townhallgoal=true -> the centre
-		} else if (isBuildingDestination()) {
-			// Walk to the building carrying the goal's buildingTag (and requiredTag). Crafting/harvest
-			// behaviour at the destination is issue #3; here we resolve and travel to the real building.
-			dest = townHall.findBuildingByTag(def.destinationTag(), def.requiredTag())
-					.map(BuildingProject::origin).orElse(townHall.centre());
+			dest = townHall.centre();
 		} else {
-			// No destination (the villager's house) — local stroll until houses are modelled (#3).
-			int x = v.blockPosition().getX() + v.getRandom().nextInt(9) - 4;
-			int z = v.blockPosition().getZ() + v.getRandom().nextInt(9) - 4;
-			int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
-			dest = new BlockPos(x, y, z);
+			dest = destinationBuilding(v, townHall).map(b -> workPos(townHall, b)).orElseGet(() -> strollNear(v, level));
 		}
 		v.setGoalTarget(dest);
-		v.getNavigation().moveTo(dest.getX() + 0.5, dest.getY(), dest.getZ() + 0.5, 0.45);
+		v.getNavigation().moveTo(dest.getX() + 0.5, dest.getY(), dest.getZ() + 0.5, 0.5);
+	}
+
+	/** Prefer the building's craftingPos (from its ResManager) over its bare origin. */
+	private BlockPos workPos(TownHall townHall, BuildingProject building) {
+		Optional<BuildingPlan> plan = MillContent.building(townHall.culture(), building.key() + "_" + building.variant());
+		if (plan.isPresent()) {
+			ResManager rm = BuildingResManagers.forBuilding(plan.get(), building);
+			Optional<BlockPos> cp = rm.first(ResManager.CRAFTING);
+			if (cp.isPresent()) {
+				return cp.get();
+			}
+		}
+		return building.origin();
+	}
+
+	private BlockPos strollNear(MillVillagerEntity v, ServerLevel level) {
+		int x = v.blockPosition().getX() + v.getRandom().nextInt(9) - 4;
+		int z = v.blockPosition().getZ() + v.getRandom().nextInt(9) - 4;
+		int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+		return new BlockPos(x, y, z);
+	}
+
+	@Override
+	public void tick(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		BlockPos t = v.getGoalTarget();
+		if (t != null) {
+			v.getLookControl().setLookAt(t.getX() + 0.5, t.getY() + 0.5, t.getZ() + 0.5);
+		}
+		// Perform a craft once we're at the work building (generous radius — the craftingPos tile may be
+		// inside the structure) and a duration has elapsed since the last action.
+		if (def.isCrafting() && t != null && v.blockPosition().distSqr(t) <= 100
+				&& level.getGameTime() - v.getLastActionTime() >= def.duration()) {
+			if (craft(v, level, townHall)) {
+				v.setLastActionTime(level.getGameTime());
+			}
+		}
+	}
+
+	private boolean craft(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		if (!def.limitGood().isEmpty() && townHall.countGood(def.limitGood()) >= def.limitMax()) {
+			return false;
+		}
+		for (GoodStack in : def.inputs()) {
+			if (townHall.countGood(in.good()) < in.qty()) {
+				return false;
+			}
+		}
+		for (GoodStack in : def.inputs()) {
+			townHall.removeGood(in.good(), in.qty());
+		}
+		for (GoodStack out : def.outputs()) {
+			townHall.addGood(out.good(), out.qty());
+		}
+		if (Millenaire.LOG_VILLAGER_GOALS) {
+			String ins = def.inputs().stream().map(g -> g.good() + "×" + g.qty()).collect(Collectors.joining("+"));
+			String outs = def.outputs().stream().map(g -> g.good() + "×" + g.qty()).collect(Collectors.joining("+"));
+			String first = def.outputs().isEmpty() ? "" : def.outputs().get(0).good();
+			Millenaire.LOGGER.info("Crafted '{}': {} -> {} by {} (stock {}={})",
+					def.key(), ins, outs, v.getName().getString(), first, townHall.countGood(first));
+		}
+		return true;
 	}
 
 	@Override
 	public boolean isFinished(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		if (def.isCrafting()) {
+			return false; // keep working until isPossible fails (out of inputs / limit reached)
+		}
 		return level.getGameTime() - v.getGoalStartTime() > def.duration();
 	}
 }
