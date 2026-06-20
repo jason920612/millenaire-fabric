@@ -7,7 +7,13 @@ A from-scratch rewrite of the **Millénaire** mod (千年村莊 — living NPC v
 > village → buildings constructed block-by-block → living villagers — but this is far from feature
 > parity with the original. See [`PLAN.md`](PLAN.md) for the honest per-layer status.
 
-## What works today (server-verified)
+> **Note on reproducibility:** the "server-verified" items below were verified against a **local,
+> separately-obtained Millénaire content tree** (the original buildings/villagers/languages data).
+> That content is **not distributed in this repository** (licensing — see below), so a fresh clone can
+> `./gradlew build` but cannot reproduce the L1–L3 runtime behaviour until you point it at a content
+> tree via `-Dmillenaire.content.dir=<path>` (or a local `_reference/kinniken-src/millenaire`).
+
+## What works today (server-verified — see reproducibility note above)
 - **Toolchain**: Fabric / MC 26.2 / Loom 1.17 / Java 25, official Mojang mappings.
 - **Content loader (L1)**: parses the original Millénaire DSLs + layered-PNG building schematics;
   loads all five cultures; maps logical blocks to 26.2 block states (1.12→26.2 flattening).

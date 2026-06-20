@@ -54,8 +54,8 @@ public final class MillWorld {
 					active, data.townHallCount(), KEEP_ACTIVE_RADIUS);
 		}
 
-		// Test-only checkpoint: flush construction progress so a mid-build reload can be verified.
-		if (forceActiveForTest && time % 100 == 0) {
+		// Test-only checkpoint: flush construction progress frequently so a mid-build reload can be verified.
+		if (forceActiveForTest && time % 20 == 0) {
 			overworld.getServer().saveEverything(true, false, false);
 		}
 	}

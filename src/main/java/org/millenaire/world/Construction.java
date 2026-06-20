@@ -30,7 +30,7 @@ public final class Construction {
 	/** Advance construction for one active town hall (one building per tick). */
 	public static void tick(ServerLevel level, TownHall townHall, MillWorldData world) {
 		for (BuildingProject project : townHall.buildings()) {
-			if (project.isDone()) {
+			if (project.isDone() || project.isBlocked()) {
 				continue;
 			}
 			advance(level, townHall.culture(), project);
@@ -42,7 +42,10 @@ public final class Construction {
 	private static void advance(ServerLevel level, String culture, BuildingProject project) {
 		Optional<BuildingPlan> planOpt = MillContent.building(culture, project.key() + "_" + project.variant());
 		if (planOpt.isEmpty()) {
-			project.setDone(true);
+			// Surface the data error instead of silently marking the building "done" with nothing built.
+			Millenaire.LOGGER.warn("Construction BLOCKED: plan '{}_{}' not found (culture '{}') — check content path / saved key",
+					project.key(), project.variant(), culture);
+			project.setBlocked(true);
 			return;
 		}
 		BuildingPlan plan = planOpt.get();
@@ -54,8 +57,9 @@ public final class Construction {
 		int width = plan.width();
 		int total = floors * length * width;
 
+		int perTick = MillWorld.forceActiveForTest ? 2 : BLOCKS_PER_TICK; // slower under test for a catchable reload window
 		int placed = 0;
-		while (placed < BLOCKS_PER_TICK) {
+		while (placed < perTick) {
 			if (project.cursor() >= total) {
 				if (project.pass() == 0) {
 					project.setPass(1);

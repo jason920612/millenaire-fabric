@@ -28,7 +28,8 @@ public final class BuildingProject {
 			Codec.INT.fieldOf("orientation").forGetter(b -> b.orientation),
 			Codec.INT.fieldOf("cursor").forGetter(b -> b.cursor),
 			Codec.INT.fieldOf("pass").forGetter(b -> b.pass),
-			Codec.BOOL.fieldOf("done").forGetter(b -> b.done)
+			Codec.BOOL.fieldOf("done").forGetter(b -> b.done),
+			Codec.BOOL.optionalFieldOf("blocked", false).forGetter(b -> b.blocked)
 	).apply(i, BuildingProject::new));
 
 	private final String key;
@@ -40,9 +41,11 @@ public final class BuildingProject {
 	private int cursor;
 	private int pass;
 	private boolean done;
+	/** Construction cannot proceed (e.g. plan not found) — surfaced, not silently "done". */
+	private boolean blocked;
 
 	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation,
-			int cursor, int pass, boolean done) {
+			int cursor, int pass, boolean done, boolean blocked) {
 		this.key = key;
 		this.variant = variant;
 		this.role = role;
@@ -52,11 +55,12 @@ public final class BuildingProject {
 		this.cursor = cursor;
 		this.pass = pass;
 		this.done = done;
+		this.blocked = blocked;
 	}
 
 	/** A fresh, unbuilt project. */
 	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation) {
-		this(key, variant, role, origin, level, orientation, 0, 0, false);
+		this(key, variant, role, origin, level, orientation, 0, 0, false, false);
 	}
 
 	public String key() {
@@ -93,6 +97,14 @@ public final class BuildingProject {
 
 	public boolean isDone() {
 		return done;
+	}
+
+	public boolean isBlocked() {
+		return blocked;
+	}
+
+	public void setBlocked(boolean blocked) {
+		this.blocked = blocked;
 	}
 
 	public void setCursor(int cursor) {
