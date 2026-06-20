@@ -2,6 +2,7 @@ package org.millenaire.entity.ai;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -28,6 +29,8 @@ public final class VillagerGoals {
 	public static final String OBSERVE_CONSTRUCTION = "observe_construction";
 
 	private static final Map<String, VillagerGoal> REGISTRY = new LinkedHashMap<>();
+	/** Data-driven goals referenced by villager types, materialised on demand (one singleton per key). */
+	private static final Map<String, VillagerGoal> GENERIC_CACHE = new ConcurrentHashMap<>();
 
 	static {
 		register(new Idle());
@@ -44,10 +47,20 @@ public final class VillagerGoals {
 	}
 
 	public static VillagerGoal byKey(String key) {
-		return key == null ? null : REGISTRY.get(key);
+		if (key == null || key.isEmpty()) {
+			return null;
+		}
+		VillagerGoal g = REGISTRY.get(key);
+		return g != null ? g : generic(key);
 	}
 
-	public static Iterable<VillagerGoal> all() {
+	/** The (cached) data-driven goal for a content goal key. */
+	public static VillagerGoal generic(String goalKey) {
+		return GENERIC_CACHE.computeIfAbsent(goalKey, k -> new GenericGoal(GenericGoalDefinition.placeholder(k)));
+	}
+
+	/** The hard-coded fallback goals (idle/wander/go-to-townhall/observe-construction). */
+	public static Iterable<VillagerGoal> fallbacks() {
 		return REGISTRY.values();
 	}
 

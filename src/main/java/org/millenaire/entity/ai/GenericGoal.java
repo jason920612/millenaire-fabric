@@ -1,0 +1,51 @@
+package org.millenaire.entity.ai;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.levelgen.Heightmap;
+import org.millenaire.entity.MillVillagerEntity;
+import org.millenaire.world.TownHall;
+
+/**
+ * A {@link VillagerGoal} backed by a {@link GenericGoalDefinition} — the data-driven goals a villager
+ * gets from its type's {@code goal=} list. Stateless singleton per definition (cached in
+ * {@link VillagerGoals}). Behaviour for this slice is a short local stroll for {@code duration} ticks;
+ * real per-goal behaviour (craft / go to a tagged building / etc.) lands with issues #3/#4.
+ */
+public final class GenericGoal implements VillagerGoal {
+
+	private final GenericGoalDefinition def;
+
+	public GenericGoal(GenericGoalDefinition def) {
+		this.def = def;
+	}
+
+	@Override
+	public String key() {
+		return def.key();
+	}
+
+	@Override
+	public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		return true;
+	}
+
+	@Override
+	public int priority(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		return def.priority() + v.getRandom().nextInt(5);
+	}
+
+	@Override
+	public void start(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		int x = v.blockPosition().getX() + v.getRandom().nextInt(9) - 4;
+		int z = v.blockPosition().getZ() + v.getRandom().nextInt(9) - 4;
+		int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+		v.setGoalTarget(new BlockPos(x, y, z));
+		v.getNavigation().moveTo(x + 0.5, y, z + 0.5, 0.45);
+	}
+
+	@Override
+	public boolean isFinished(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		return level.getGameTime() - v.getGoalStartTime() > def.duration();
+	}
+}

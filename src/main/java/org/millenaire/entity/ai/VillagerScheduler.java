@@ -1,7 +1,10 @@
 package org.millenaire.entity.ai;
 
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.server.level.ServerLevel;
 import org.millenaire.Millenaire;
+import org.millenaire.content.MillContent;
 import org.millenaire.entity.MillVillagerEntity;
 import org.millenaire.world.TownHall;
 
@@ -53,7 +56,7 @@ public final class VillagerScheduler {
 	private static VillagerGoal selectBest(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
 		VillagerGoal best = null;
 		int bestPriority = Integer.MIN_VALUE;
-		for (VillagerGoal g : VillagerGoals.all()) {
+		for (VillagerGoal g : candidatesFor(v, townHall)) {
 			if (!g.isPossible(v, level, townHall)) {
 				continue;
 			}
@@ -64,5 +67,19 @@ public final class VillagerScheduler {
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * The candidate goals for this villager: the hard-coded fallbacks PLUS the data-driven goals from
+	 * its villager type's {@code goal=} list (INTENT.md doc 01) — so different professions consider
+	 * different goals, sourced from content rather than a global hard-coded set.
+	 */
+	private static List<VillagerGoal> candidatesFor(MillVillagerEntity v, TownHall townHall) {
+		List<VillagerGoal> list = new ArrayList<>();
+		VillagerGoals.fallbacks().forEach(list::add);
+		MillContent.culture(townHall.culture())
+				.flatMap(c -> c.villagerType(v.getVillagerType()))
+				.ifPresent(t -> t.goals().forEach(key -> list.add(VillagerGoals.generic(key))));
+		return list;
 	}
 }

@@ -12,11 +12,12 @@ import net.minecraft.core.UUIDUtil;
  * gone after a reload — respawning it with the same UUID so the membership stays consistent
  * (no duplicates). The richer per-villager record (job, family, vrecords) comes later.
  */
-public record VillagerMember(UUID id, String name, BlockPos home) {
+public record VillagerMember(UUID id, String name, String type, BlockPos home) {
 
 	public static final Codec<VillagerMember> CODEC = RecordCodecBuilder.create(i -> i.group(
 			UUIDUtil.CODEC.fieldOf("id").forGetter(VillagerMember::id),
 			Codec.STRING.fieldOf("name").forGetter(VillagerMember::name),
+			Codec.STRING.optionalFieldOf("type", "").forGetter(VillagerMember::type),
 			BlockPos.CODEC.fieldOf("home").forGetter(VillagerMember::home)
 	).apply(i, VillagerMember::new));
 }

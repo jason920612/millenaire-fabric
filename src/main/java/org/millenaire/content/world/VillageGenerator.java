@@ -92,20 +92,22 @@ public final class VillageGenerator {
 					slot.role(), plan.get().key(), plan.get().variant(), origin, orientation);
 		}
 
-		// Populate the village with a few living villagers near the centre.
+		// Populate the village with a few living villagers near the centre, each of a culture villager type.
 		int villagers = 0;
 		if (centreOrigin != null) {
+			List<String> typeKeys = new java.util.ArrayList<>(culture.villagerTypes().keySet());
 			for (int v = 0; v < 3; v++) {
 				int sx = centreOrigin.getX() - 3 - v;
 				int sz = centreOrigin.getZ() - 3;
 				level.getChunk(sx >> 4, sz >> 4);
 				int sy = level.getHeight(Heightmap.Types.WORLD_SURFACE, sx, sz);
 				BlockPos home = new BlockPos(sx, sy, sz);
-				String vname = capitalize(culture.name()) + " villager " + (v + 1);
+				String vtype = typeKeys.isEmpty() ? "" : typeKeys.get(v % typeKeys.size());
+				String vname = capitalize(culture.name()) + " " + (vtype.isEmpty() ? "villager" : vtype) + " " + (v + 1);
 				// test-only invulnerable: survive headless construction so the scheduler can be exercised
-				MillVillagerEntity villager = MillVillagerEntity.spawn(level, null, vname, home, MillWorld.forceActiveForTest);
+				MillVillagerEntity villager = MillVillagerEntity.spawn(level, null, vname, vtype, home, MillWorld.forceActiveForTest);
 				villagers++;
-				townHall.addVillager(new VillagerMember(villager.getUUID(), vname, home));
+				townHall.addVillager(new VillagerMember(villager.getUUID(), vname, vtype, home));
 			}
 			Millenaire.LOGGER.info("  spawned {} villagers near centre {}", villagers, centreOrigin);
 		}

@@ -62,7 +62,7 @@ public final class MillWorld {
 						VillagerScheduler.tick(villager, overworld, t);
 					} else if (overworld.isLoaded(m.home())) {
 						// home chunk is loaded but the entity isn't anywhere -> it's gone -> repair (same UUID).
-						MillVillagerEntity villager = MillVillagerEntity.spawn(overworld, m.id(), m.name(), m.home(), forceActiveForTest);
+						MillVillagerEntity villager = MillVillagerEntity.spawn(overworld, m.id(), m.name(), m.type(), m.home(), forceActiveForTest);
 						VillagerScheduler.tick(villager, overworld, t);
 						Millenaire.LOGGER.info("MillWorld: repaired missing villager '{}' ({}) at {} in '{}'",
 								m.name(), m.id(), m.home(), t.name());

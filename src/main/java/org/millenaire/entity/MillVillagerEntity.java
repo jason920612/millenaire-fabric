@@ -28,24 +28,30 @@ public class MillVillagerEntity extends PathfinderMob {
 	private String goalKey = "";
 	private BlockPos goalTarget;
 	private long goalStartTime;
+	/** Villager type key (e.g. {@code carpenter}); drives the data-driven candidate goals. */
+	private String villagerType = "";
 
 	public MillVillagerEntity(EntityType<? extends PathfinderMob> type, Level level) {
 		super(type, level);
 	}
 
-	/** Spawn (or re-spawn, for repair) a villager with a specific UUID, name and position. */
-	public static MillVillagerEntity spawn(ServerLevel level, UUID id, String name, BlockPos pos, boolean invulnerable) {
+	/** Spawn (or re-spawn, for repair) a villager with a specific UUID, name, type and position. */
+	public static MillVillagerEntity spawn(ServerLevel level, UUID id, String name, String villagerType,
+			BlockPos pos, boolean invulnerable) {
 		MillVillagerEntity v = new MillVillagerEntity(Millenaire.VILLAGER, level);
 		if (id != null) {
 			v.setUUID(id);
 		}
+		v.setVillagerType(villagerType);
 		v.snapTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0f, 0f);
 		if (name != null && !name.isEmpty()) {
 			v.setCustomName(Component.literal(name));
 			v.setCustomNameVisible(true);
 		}
 		v.setInvulnerable(invulnerable);
-		level.addFreshEntity(v);
+		if (!level.addFreshEntity(v)) {
+			Millenaire.LOGGER.warn("Failed to add villager '{}' (type {}) to the world at {}", name, villagerType, pos);
+		}
 		return v;
 	}
 
@@ -85,10 +91,19 @@ public class MillVillagerEntity extends PathfinderMob {
 		this.goalStartTime = time;
 	}
 
+	public String getVillagerType() {
+		return villagerType;
+	}
+
+	public void setVillagerType(String type) {
+		this.villagerType = type == null ? "" : type;
+	}
+
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);
 		output.putString("MillGoalKey", goalKey);
+		output.putString("MillType", villagerType);
 		output.putLong("MillGoalStart", goalStartTime);
 		output.putLong("MillGoalTarget", goalTarget == null ? Long.MIN_VALUE : goalTarget.asLong());
 	}
@@ -97,6 +112,7 @@ public class MillVillagerEntity extends PathfinderMob {
 	protected void readAdditionalSaveData(ValueInput input) {
 		super.readAdditionalSaveData(input);
 		goalKey = input.getStringOr("MillGoalKey", "");
+		villagerType = input.getStringOr("MillType", "");
 		goalStartTime = input.getLongOr("MillGoalStart", 0L);
 		long t = input.getLongOr("MillGoalTarget", Long.MIN_VALUE);
 		goalTarget = t == Long.MIN_VALUE ? null : BlockPos.of(t);

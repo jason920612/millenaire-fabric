@@ -25,7 +25,7 @@ public final class Culture {
 	private final String name;
 	private final Dsl.Record cultureConfig;
 	private final Map<String, BuildingPlan> buildings = new LinkedHashMap<>();
-	private final List<String> villagerTypes = new ArrayList<>();
+	private final Map<String, VillagerType> villagerTypes = new LinkedHashMap<>();
 	private final Map<String, VillageType> villageTypes = new LinkedHashMap<>();
 	private int buildingFailures;
 
@@ -56,6 +56,14 @@ public final class Culture {
 
 	public int villagerTypeCount() {
 		return villagerTypes.size();
+	}
+
+	public Map<String, VillagerType> villagerTypes() {
+		return villagerTypes;
+	}
+
+	public Optional<VillagerType> villagerType(String key) {
+		return Optional.ofNullable(villagerTypes.get(key));
 	}
 
 	public int villageTypeCount() {
@@ -105,7 +113,7 @@ public final class Culture {
 			}
 		}
 
-		culture.countFiles(cultureDir.resolve("villagers"), culture.villagerTypes);
+		culture.loadVillagerTypes(cultureDir.resolve("villagers"));
 		culture.loadVillageTypes(cultureDir.resolve("villages"));
 
 		Millenaire.LOGGER.info("Culture '{}': {} buildings ({} failed), {} villager types, {} village types",
@@ -130,13 +138,20 @@ public final class Culture {
 		}
 	}
 
-	private void countFiles(Path dir, List<String> into) throws IOException {
+	private void loadVillagerTypes(Path dir) throws IOException {
 		if (!Files.isDirectory(dir)) {
 			return;
 		}
 		try (Stream<Path> s = Files.list(dir)) {
-			s.filter(p -> p.getFileName().toString().endsWith(".txt"))
-					.forEach(p -> into.add(p.getFileName().toString().replaceFirst("\\.txt$", "")));
+			List<Path> txts = s.filter(p -> p.getFileName().toString().endsWith(".txt")).sorted().toList();
+			for (Path txt : txts) {
+				try {
+					VillagerType vt = VillagerType.parse(txt);
+					villagerTypes.put(vt.key(), vt);
+				} catch (Exception e) {
+					Millenaire.LOGGER.warn("[{}] villager type parse failed: {} ({})", name, txt.getFileName(), e.getMessage());
+				}
+			}
 		}
 	}
 }
