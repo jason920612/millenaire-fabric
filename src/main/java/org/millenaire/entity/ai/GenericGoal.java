@@ -28,10 +28,13 @@ public final class GenericGoal implements VillagerGoal {
 
 	@Override
 	public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
-		// A building-destination goal is only possible if the village actually has that building
-		// (with the required upgrade tag) — models the docs' building/unlock gating.
+		// Building/unlock gating (docs): the destination building must exist (with requiredTag); and even
+		// for house/default-destination goals, a non-empty requiredTag must be satisfied by some building.
 		if (isBuildingDestination()) {
 			return townHall.findBuildingByTag(def.destinationTag(), def.requiredTag()).isPresent();
+		}
+		if (!def.requiredTag().isEmpty()) {
+			return townHall.findBuildingByTag(def.requiredTag(), "").isPresent();
 		}
 		return true;
 	}

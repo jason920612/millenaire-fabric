@@ -70,12 +70,25 @@ public final class FakePlayerProbe {
 				Millenaire.LOGGER.info("FakePlayer self-test: useItemOn -> {}; village scheduled — construction proceeds over the next ticks",
 						result.getClass().getSimpleName());
 
-				AABB box = AABB.ofSize(Vec3.atCenterOf(clicked), 160, 96, 160);
+				AABB box = AABB.ofSize(Vec3.atCenterOf(clicked), 160, 400, 160);
 				var villagers = level.getEntitiesOfClass(MillVillagerEntity.class, box);
 				Millenaire.LOGGER.info("FakePlayer self-test: {} Millénaire villager entities alive (e.g. {})",
 						villagers.size(),
 						villagers.isEmpty() ? "<none>"
 								: villagers.get(0).getName().getString() + " @ " + villagers.get(0).blockPosition());
+
+				// Gating self-check: real GenericGoal.isPossible against the real village (which has no
+				// armoury/cider work buildings). A requiredTag-only goal must now be gated out; a townhall goal must pass.
+				if (!villagers.isEmpty() && !world.townHalls().isEmpty()) {
+					var vv = villagers.get(0);
+					var th0 = world.townHalls().get(0);
+					boolean reqOnly = org.millenaire.entity.ai.VillagerGoals.generic("makejgboots").isPossible(vv, level, th0);
+					boolean buildingDest = org.millenaire.entity.ai.VillagerGoals.generic("makecalva").isPossible(vv, level, th0);
+					boolean townhall = org.millenaire.entity.ai.VillagerGoals.generic("cookindianbrick").isPossible(vv, level, th0);
+					Millenaire.LOGGER.info("Gating check: makejgboots(requiredTag=armoury)={} (expect false), "
+							+ "makecalva(buildingTag=cider)={} (expect false), cookindianbrick(townhall)={} (expect true)",
+							reqOnly, buildingDest, townhall);
+				}
 
 				fake.discard();
 
