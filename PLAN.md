@@ -165,7 +165,8 @@
    - **active/inactive**：per-village 狀態 + `setActive` 轉移入口 + `MillWorld.onTransition` hook（供後續建造/NPC tick 掛入）。
    - **實測**：run#1 founded `Gros Bourg` id=7d0f69f6…[5 buildings,3 villagers]→落盤；run#2 `loaded 1 at startup`（持久化）+ `not founding a duplicate`（去重）。覆蓋率報告改顯示 0.77%。
    - **仍 TODO**：chunk forcing + active 重模擬實體（hook 已留）、聲望/控制權欄位、玩家 UUID 綁定。
-8. **剩餘工作（全功能對等的長路）**：
+8. ~~**L4 NPC goal 排程器（slice，issue #1）**~~ ✅（2026-06-20）：自訂「單一 `goalKey`、最高 `priority()` 勝、無狀態 singleton goal、per-villager 狀態持久化（`ValueOutput/Input`）」排程器，**非** vanilla 平行 `GoalSelector`；由 `MillWorld` active tick 驅動。4 個 goal（observe_construction/go_to_townhall/wander/idle）。**實測**：建造中選 observe_construction → 建完切 go_to_townhall↔wander 循環（41 次選擇，狀態驅動切換）。順帶加 **active 村莊 chunk forcing**（issue #6 部分）。**未達**：完整作息/職業/生產/繁衍、reload 後 goalKey 續存的獨立驗證。
+9. **剩餘工作（全功能對等的長路）**：
    - **L3 建造系統**：村民逐塊蓋建築（非瞬間放置）、升級階 `_A→_B`、道路/朝向佈局。
    - **L4 完整 NPC**：資料驅動 goal 排程器（單一最高優先序湧現）、職業/作息/生產/繁衍、原生 pathfinding + per-goal 設定。
    - **L5 經濟/GUI**：貿易、denier 貨幣、`GuiText` 接 `extractRenderState`、村民/村莊面板。

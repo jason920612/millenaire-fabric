@@ -52,6 +52,7 @@ public final class FakePlayerProbe {
 							th.name(), doneCount, th.buildings().size(), cursors);
 				}
 
+				level.getChunk(0, 0); // ensure spawn chunk is generated so the heightmap is valid
 				int surfaceY = level.getHeight(Heightmap.Types.WORLD_SURFACE, 0, 0);
 				BlockPos clicked = new BlockPos(0, surfaceY - 1, 0); // solid block at the surface
 

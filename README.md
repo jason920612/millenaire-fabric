@@ -20,8 +20,10 @@ A from-scratch rewrite of the **Millénaire** mod (千年村莊 — living NPC v
 - **World (L2 + backbone)**: `MillWorld` / `TownHall` aggregate persisted via `SavedData`
   (single source of truth, survives reload), duplicate-village prevention, proximity active/inactive.
 - **Construction (L3)**: active villages build their buildings **gradually**, two-pass
-  (structure then doors/torches/…), with a persistent cursor that resumes after a reload.
-- **NPCs (L4, slice)**: a custom villager entity spawns in villages and wanders.
+  (structure, then doors/torches/etc.), with a persistent cursor that resumes after a reload.
+- **NPCs (L4, slice)**: a custom villager entity with a Millénaire-style scheduler — one `goalKey`
+  at a time, highest-priority emergent selection (not vanilla's parallel `GoalSelector`), driven by
+  active villages. Goals so far: observe-construction / go-to-town-hall / wander / idle.
 
 ## Design docs
 - [`PLAN.md`](PLAN.md) — layered plan (L0–L7) and current status.

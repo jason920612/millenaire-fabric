@@ -35,6 +35,9 @@ public final class Millenaire implements ModInitializer {
 	public static final String MOD_ID = "millenaire";
 	public static final Logger LOGGER = LoggerFactory.getLogger("Millénaire");
 
+	/** Dev: log villager goal switches (the custom scheduler). */
+	public static final boolean LOG_VILLAGER_GOALS = true;
+
 	/** A single test item to prove registration works on 26.2. */
 	public static final Item DEBUG_WAND = registerItem("debug_wand", new Item.Properties());
 

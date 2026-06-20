@@ -1,26 +1,29 @@
 package org.millenaire.entity;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
-import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
-import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 /**
- * L4 first slice: a living Millénaire villager. For now a {@link PathfinderMob} with vanilla wander
- * goals so it walks around the village — proves custom entity registration + spawning + AI on 26.2.
+ * A living Millénaire villager. Its behaviour is driven by the custom {@link org.millenaire.entity.ai.VillagerScheduler}
+ * (single {@code goalKey} at a time, highest-priority emergent selection — INTENT.md doc 01), NOT by
+ * vanilla's parallel {@code GoalSelector}. The only vanilla goal kept is a swimming reflex.
  *
- * <p>The real Millénaire goal system (data-driven, single-highest-priority emergent scheduler,
- * INTENT.md doc 01) replaces these vanilla goals in the full L4. Culture/type/name/job, daily
- * routine, production and the client renderer are follow-ups.
+ * <p>Per-villager goal state ({@code goalKey}, target, start time) lives here and is persisted, so a
+ * villager keeps its current goal across a reload.
  */
 public class MillVillagerEntity extends PathfinderMob {
+
+	private String goalKey = "";
+	private BlockPos goalTarget;
+	private long goalStartTime;
 
 	public MillVillagerEntity(EntityType<? extends PathfinderMob> type, Level level) {
 		super(type, level);
@@ -34,9 +37,48 @@ public class MillVillagerEntity extends PathfinderMob {
 
 	@Override
 	protected void registerGoals() {
+		// Core decision-making is the custom scheduler; this is only a "don't drown" reflex, not the brain.
 		this.goalSelector.addGoal(0, new FloatGoal(this));
-		this.goalSelector.addGoal(1, new WaterAvoidingRandomStrollGoal(this, 0.6));
-		this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 8.0f));
-		this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
+	}
+
+	public String getGoalKey() {
+		return goalKey;
+	}
+
+	public void setGoalKey(String key) {
+		this.goalKey = key == null ? "" : key;
+	}
+
+	public BlockPos getGoalTarget() {
+		return goalTarget;
+	}
+
+	public void setGoalTarget(BlockPos target) {
+		this.goalTarget = target;
+	}
+
+	public long getGoalStartTime() {
+		return goalStartTime;
+	}
+
+	public void setGoalStartTime(long time) {
+		this.goalStartTime = time;
+	}
+
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.putString("MillGoalKey", goalKey);
+		output.putLong("MillGoalStart", goalStartTime);
+		output.putLong("MillGoalTarget", goalTarget == null ? Long.MIN_VALUE : goalTarget.asLong());
+	}
+
+	@Override
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		goalKey = input.getStringOr("MillGoalKey", "");
+		goalStartTime = input.getLongOr("MillGoalStart", 0L);
+		long t = input.getLongOr("MillGoalTarget", Long.MIN_VALUE);
+		goalTarget = t == Long.MIN_VALUE ? null : BlockPos.of(t);
 	}
 }

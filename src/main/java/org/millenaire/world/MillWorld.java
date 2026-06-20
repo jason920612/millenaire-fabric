@@ -3,7 +3,10 @@ package org.millenaire.world;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.AABB;
 import org.millenaire.Millenaire;
+import org.millenaire.entity.MillVillagerEntity;
+import org.millenaire.entity.ai.VillagerScheduler;
 
 /**
  * Runtime facade over {@link MillWorldData}: the per-village active/inactive proximity state machine
@@ -42,11 +45,20 @@ public final class MillWorld {
 			if (t.setActive(shouldBeActive)) {
 				Millenaire.LOGGER.info("MillWorld: village '{}' {} (id={})",
 						t.name(), shouldBeActive ? "ACTIVATED" : "deactivated", t.id());
+				setVillageChunksForced(overworld, t.centre(), shouldBeActive);
 			}
 			if (t.isActive()) {
 				active++;
-				// Active behaviour: drive gradual construction (L3). NPC/trade ticks attach here next.
+				// Keep the village's chunks loaded so it actually ticks while active (chunk forcing).
+				setVillageChunksForced(overworld, t.centre(), true);
+				// Active behaviour: drive gradual construction (L3) and the villager scheduler (L4).
 				Construction.tick(overworld, t, data);
+				// Search a full-height column around the centre: village Y may differ from the centre's
+				// recorded Y (it is the founding click), so don't constrain the vertical range tightly.
+				for (MillVillagerEntity villager : overworld.getEntitiesOfClass(
+						MillVillagerEntity.class, new AABB(t.centre()).inflate(96, 400, 96))) {
+					VillagerScheduler.tick(villager, overworld, t);
+				}
 			}
 		}
 		if (report) {
@@ -57,6 +69,19 @@ public final class MillWorld {
 		// Test-only checkpoint: flush construction progress frequently so a mid-build reload can be verified.
 		if (forceActiveForTest && time % 20 == 0) {
 			overworld.getServer().saveEverything(true, false, false);
+		}
+	}
+
+	/** Chunk radius (in chunks) force-loaded around an active village's centre. */
+	private static final int FORCE_CHUNK_RADIUS = 2;
+
+	private static void setVillageChunksForced(ServerLevel level, BlockPos centre, boolean forced) {
+		int ccx = centre.getX() >> 4;
+		int ccz = centre.getZ() >> 4;
+		for (int dx = -FORCE_CHUNK_RADIUS; dx <= FORCE_CHUNK_RADIUS; dx++) {
+			for (int dz = -FORCE_CHUNK_RADIUS; dz <= FORCE_CHUNK_RADIUS; dz++) {
+				level.setChunkForced(ccx + dx, ccz + dz, forced);
+			}
 		}
 	}
 

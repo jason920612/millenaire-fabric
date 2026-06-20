@@ -45,6 +45,7 @@ public final class VillageGenerator {
 		int row = index / cols;
 		int x = centre.getX() + (col - cols / 2) * SPACING;
 		int z = centre.getZ() + (row - cols / 2) * SPACING;
+		level.getChunk(x >> 4, z >> 4); // ensure the chunk is generated so the heightmap is valid
 		int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
 		return new BlockPos(x, y, z);
 	}
@@ -96,11 +97,15 @@ public final class VillageGenerator {
 			for (int v = 0; v < 3; v++) {
 				int sx = centreOrigin.getX() - 3 - v;
 				int sz = centreOrigin.getZ() - 3;
+				level.getChunk(sx >> 4, sz >> 4);
 				int sy = level.getHeight(Heightmap.Types.WORLD_SURFACE, sx, sz);
 				MillVillagerEntity villager = new MillVillagerEntity(Millenaire.VILLAGER, level);
 				villager.snapTo(sx + 0.5, sy, sz + 0.5, 0f, 0f);
 				villager.setCustomName(Component.literal(capitalize(culture.name()) + " villager " + (v + 1)));
 				villager.setCustomNameVisible(true);
+				if (org.millenaire.world.MillWorld.forceActiveForTest) {
+					villager.setInvulnerable(true); // test-only: survive headless construction to exercise the scheduler
+				}
 				if (level.addFreshEntity(villager)) {
 					villagers++;
 					townHall.addVillager(villager.getUUID());
