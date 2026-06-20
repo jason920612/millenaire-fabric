@@ -2,6 +2,7 @@ package org.millenaire.content.culture;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import org.millenaire.content.Dsl;
 
 /**
@@ -47,6 +48,6 @@ public final class VillagerType {
 		return new VillagerType(key,
 				r.first("native_name").orElse(key),
 				r.first("gender").orElse("male"),
-				List.copyOf(r.all("goal")));
+				r.all("goal").stream().map(g -> g.toLowerCase(Locale.ROOT)).toList());
 	}
 }

@@ -37,6 +37,7 @@ public final class ContentLoader {
 		try {
 			BlockList blockList = BlockList.load(repo.blocklist());
 			Goods goods = Goods.load(repo.goods());
+			org.millenaire.entity.ai.GoalDefinitions.load(repo.root().resolve("goals"));
 
 			List<Culture> cultures = new ArrayList<>();
 			int totalBuildings = 0;

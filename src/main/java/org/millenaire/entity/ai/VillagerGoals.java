@@ -1,6 +1,7 @@
 package org.millenaire.entity.ai;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
@@ -54,9 +55,18 @@ public final class VillagerGoals {
 		return g != null ? g : generic(key);
 	}
 
-	/** The (cached) data-driven goal for a content goal key. */
+	/** The (cached) data-driven goal for a content goal key (case-insensitive; backed by its real definition). */
 	public static VillagerGoal generic(String goalKey) {
-		return GENERIC_CACHE.computeIfAbsent(goalKey, k -> new GenericGoal(GenericGoalDefinition.placeholder(k)));
+		String key = goalKey.toLowerCase(Locale.ROOT);
+		return GENERIC_CACHE.computeIfAbsent(key, k -> {
+			boolean defined = GoalDefinitions.get(k).isPresent();
+			GenericGoalDefinition def = GoalDefinitions.get(k).orElseGet(() -> GenericGoalDefinition.placeholder(k));
+			if (org.millenaire.Millenaire.LOG_VILLAGER_GOALS) {
+				org.millenaire.Millenaire.LOGGER.info("Generic goal '{}': priority={} duration={}t dest='{}'{}",
+						def.key(), def.priority(), def.duration(), def.destinationTag(), defined ? "" : " (placeholder/hard-coded)");
+			}
+			return new GenericGoal(def);
+		});
 	}
 
 	/** The hard-coded fallback goals (idle/wander/go-to-townhall/observe-construction). */

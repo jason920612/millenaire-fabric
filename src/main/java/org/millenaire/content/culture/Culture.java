@@ -63,7 +63,8 @@ public final class Culture {
 	}
 
 	public Optional<VillagerType> villagerType(String key) {
-		return Optional.ofNullable(villagerTypes.get(key));
+		return key == null ? Optional.empty()
+				: Optional.ofNullable(villagerTypes.get(key.toLowerCase(java.util.Locale.ROOT)));
 	}
 
 	public int villageTypeCount() {
@@ -147,7 +148,7 @@ public final class Culture {
 			for (Path txt : txts) {
 				try {
 					VillagerType vt = VillagerType.parse(txt);
-					villagerTypes.put(vt.key(), vt);
+					villagerTypes.put(vt.key().toLowerCase(java.util.Locale.ROOT), vt);
 				} catch (Exception e) {
 					Millenaire.LOGGER.warn("[{}] villager type parse failed: {} ({})", name, txt.getFileName(), e.getMessage());
 				}

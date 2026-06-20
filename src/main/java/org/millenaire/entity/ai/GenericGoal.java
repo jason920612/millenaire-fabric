@@ -37,11 +37,18 @@ public final class GenericGoal implements VillagerGoal {
 
 	@Override
 	public void start(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
-		int x = v.blockPosition().getX() + v.getRandom().nextInt(9) - 4;
-		int z = v.blockPosition().getZ() + v.getRandom().nextInt(9) - 4;
-		int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
-		v.setGoalTarget(new BlockPos(x, y, z));
-		v.getNavigation().moveTo(x + 0.5, y, z + 0.5, 0.45);
+		BlockPos dest;
+		if (GenericGoalDefinition.TOWNHALL.equals(def.destinationTag())) {
+			dest = townHall.centre(); // townhall goals happen at the centre
+		} else {
+			// building-tag / house destinations are issue #3; for now a short local stroll.
+			int x = v.blockPosition().getX() + v.getRandom().nextInt(9) - 4;
+			int z = v.blockPosition().getZ() + v.getRandom().nextInt(9) - 4;
+			int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+			dest = new BlockPos(x, y, z);
+		}
+		v.setGoalTarget(dest);
+		v.getNavigation().moveTo(dest.getX() + 0.5, dest.getY(), dest.getZ() + 0.5, 0.45);
 	}
 
 	@Override
