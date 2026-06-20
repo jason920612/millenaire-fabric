@@ -1,6 +1,9 @@
 package org.millenaire.entity;
 
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -10,6 +13,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import org.millenaire.Millenaire;
 
 /**
  * A living Millénaire villager. Its behaviour is driven by the custom {@link org.millenaire.entity.ai.VillagerScheduler}
@@ -27,6 +31,22 @@ public class MillVillagerEntity extends PathfinderMob {
 
 	public MillVillagerEntity(EntityType<? extends PathfinderMob> type, Level level) {
 		super(type, level);
+	}
+
+	/** Spawn (or re-spawn, for repair) a villager with a specific UUID, name and position. */
+	public static MillVillagerEntity spawn(ServerLevel level, UUID id, String name, BlockPos pos, boolean invulnerable) {
+		MillVillagerEntity v = new MillVillagerEntity(Millenaire.VILLAGER, level);
+		if (id != null) {
+			v.setUUID(id);
+		}
+		v.snapTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0f, 0f);
+		if (name != null && !name.isEmpty()) {
+			v.setCustomName(Component.literal(name));
+			v.setCustomNameVisible(true);
+		}
+		v.setInvulnerable(invulnerable);
+		level.addFreshEntity(v);
+		return v;
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {

@@ -1,6 +1,5 @@
 package org.millenaire.world;
 
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -54,18 +53,25 @@ public final class MillWorld {
 				setVillageChunksForced(overworld, t.centre(), true);
 				// Active behaviour: drive gradual construction (L3) and the villager scheduler (L4).
 				Construction.tick(overworld, t, data);
-				// The TownHall OWNS its villagers by UUID — tick exactly those, not whoever is nearby.
+				// The TownHall OWNS its villagers by UUID — tick exactly those, and repair any whose entity
+				// is gone (e.g. lost across a reload), respawning with the same UUID so membership stays consistent.
 				int missing = 0;
-				for (UUID villagerId : t.villagers()) {
-					Entity e = overworld.getEntity(villagerId);
+				for (VillagerMember m : t.villagers()) {
+					Entity e = overworld.getEntity(m.id());
 					if (e instanceof MillVillagerEntity villager && villager.isAlive()) {
 						VillagerScheduler.tick(villager, overworld, t);
+					} else if (overworld.isLoaded(m.home())) {
+						// home chunk is loaded but the entity isn't anywhere -> it's gone -> repair (same UUID).
+						MillVillagerEntity villager = MillVillagerEntity.spawn(overworld, m.id(), m.name(), m.home(), forceActiveForTest);
+						VillagerScheduler.tick(villager, overworld, t);
+						Millenaire.LOGGER.info("MillWorld: repaired missing villager '{}' ({}) at {} in '{}'",
+								m.name(), m.id(), m.home(), t.name());
 					} else {
-						missing++; // not loaded / dead — repair (re-spawn / drop record) is future work
+						missing++; // home chunk not loaded yet; resolves once the forced chunk loads
 					}
 				}
 				if (report && missing > 0) {
-					Millenaire.LOGGER.info("MillWorld: village '{}' has {}/{} villager(s) not loaded",
+					Millenaire.LOGGER.info("MillWorld: village '{}' has {}/{} villager(s) not yet loaded",
 							t.name(), missing, t.villagers().size());
 				}
 			}

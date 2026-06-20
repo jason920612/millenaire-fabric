@@ -25,7 +25,7 @@ public final class TownHall {
 			Codec.STRING.fieldOf("type").forGetter(t -> t.villageType),
 			Codec.STRING.fieldOf("name").forGetter(t -> t.name),
 			BuildingProject.CODEC.listOf().fieldOf("buildings").forGetter(t -> t.buildings),
-			UUIDUtil.CODEC.listOf().fieldOf("villagers").forGetter(t -> t.villagers)
+			VillagerMember.CODEC.listOf().fieldOf("villagers").forGetter(t -> t.villagers)
 	).apply(i, TownHall::new));
 
 	private final UUID id;
@@ -34,13 +34,13 @@ public final class TownHall {
 	private final String villageType;
 	private final String name;
 	private final List<BuildingProject> buildings;
-	private final List<UUID> villagers;
+	private final List<VillagerMember> villagers;
 
 	/** Runtime only — not persisted. */
 	private transient boolean active;
 
 	public TownHall(UUID id, BlockPos centre, String culture, String villageType, String name,
-			List<BuildingProject> buildings, List<UUID> villagers) {
+			List<BuildingProject> buildings, List<VillagerMember> villagers) {
 		this.id = id;
 		this.centre = centre;
 		this.culture = culture;
@@ -79,7 +79,7 @@ public final class TownHall {
 		return Collections.unmodifiableList(buildings);
 	}
 
-	public List<UUID> villagers() {
+	public List<VillagerMember> villagers() {
 		return Collections.unmodifiableList(villagers);
 	}
 
@@ -87,8 +87,8 @@ public final class TownHall {
 		buildings.add(b);
 	}
 
-	public void addVillager(UUID villagerId) {
-		villagers.add(villagerId);
+	public void addVillager(VillagerMember member) {
+		villagers.add(member);
 	}
 
 	public boolean isActive() {

@@ -3,7 +3,6 @@ package org.millenaire.content.world;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.millenaire.Millenaire;
@@ -12,8 +11,10 @@ import org.millenaire.content.culture.Culture;
 import org.millenaire.content.culture.VillageType;
 import org.millenaire.entity.MillVillagerEntity;
 import org.millenaire.world.BuildingProject;
+import org.millenaire.world.MillWorld;
 import org.millenaire.world.MillWorldData;
 import org.millenaire.world.TownHall;
+import org.millenaire.world.VillagerMember;
 
 /**
  * L2 village generation (first slice): given a centre, a culture and a village type, place the
@@ -99,17 +100,12 @@ public final class VillageGenerator {
 				int sz = centreOrigin.getZ() - 3;
 				level.getChunk(sx >> 4, sz >> 4);
 				int sy = level.getHeight(Heightmap.Types.WORLD_SURFACE, sx, sz);
-				MillVillagerEntity villager = new MillVillagerEntity(Millenaire.VILLAGER, level);
-				villager.snapTo(sx + 0.5, sy, sz + 0.5, 0f, 0f);
-				villager.setCustomName(Component.literal(capitalize(culture.name()) + " villager " + (v + 1)));
-				villager.setCustomNameVisible(true);
-				if (org.millenaire.world.MillWorld.forceActiveForTest) {
-					villager.setInvulnerable(true); // test-only: survive headless construction to exercise the scheduler
-				}
-				if (level.addFreshEntity(villager)) {
-					villagers++;
-					townHall.addVillager(villager.getUUID());
-				}
+				BlockPos home = new BlockPos(sx, sy, sz);
+				String vname = capitalize(culture.name()) + " villager " + (v + 1);
+				// test-only invulnerable: survive headless construction so the scheduler can be exercised
+				MillVillagerEntity villager = MillVillagerEntity.spawn(level, null, vname, home, MillWorld.forceActiveForTest);
+				villagers++;
+				townHall.addVillager(new VillagerMember(villager.getUUID(), vname, home));
 			}
 			Millenaire.LOGGER.info("  spawned {} villagers near centre {}", villagers, centreOrigin);
 		}
