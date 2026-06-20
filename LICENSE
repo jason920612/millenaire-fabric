@@ -1,0 +1,15 @@
+Millénaire — Minecraft 26.2 (Fabric) clean-room rewrite
+========================================================
+
+LICENSE: TO BE DETERMINED (see PLAN.md §8, decision D1).
+
+This project is a clean-room rewrite. All Java source code in src/ is written
+from scratch and does not contain decompiled Minecraft code or copied code from
+the original Millénaire mod.
+
+Reused art and content data originate from the original Millénaire by Kinniken
+(https://millenaire.org/, https://gitlab.com/Millenaire/Public). Their use and
+any public redistribution is pending license clarification / author permission
+and MUST be resolved before any public release.
+
+Until a final license is chosen, all rights are reserved.

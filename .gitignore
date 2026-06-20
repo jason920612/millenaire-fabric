@@ -1,0 +1,32 @@
+# gradle / loom
+.gradle/
+build/
+run/
+remappedSrc/
+.loom-cache/
+
+# decompiled / generated sources cache
+*-sources.jar
+
+# local tooling (bootstrapped JDK, etc.) — not part of the project
+.tooling/
+
+# reference repos (design reference only, not part of the build)
+_reference/
+
+# remote-control session attachments
+.codex-remote-attachments/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+eclipse/
+
+# OS
+.DS_Store
+Thumbs.db
