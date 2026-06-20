@@ -38,6 +38,8 @@ public final class TownHall {
 
 	/** Runtime only — not persisted. */
 	private transient boolean active;
+	/** Game time at which this village last became active (runtime only) — used as a repair grace window. */
+	private transient long activeSince;
 
 	public TownHall(UUID id, BlockPos centre, String culture, String villageType, String name,
 			List<BuildingProject> buildings, List<VillagerMember> villagers) {
@@ -93,6 +95,14 @@ public final class TownHall {
 
 	public boolean isActive() {
 		return active;
+	}
+
+	public long activeSince() {
+		return activeSince;
+	}
+
+	public void setActiveSince(long gameTime) {
+		this.activeSince = gameTime;
 	}
 
 	/**

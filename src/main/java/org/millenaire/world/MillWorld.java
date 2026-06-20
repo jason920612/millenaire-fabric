@@ -1,5 +1,6 @@
 package org.millenaire.world;
 
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -46,6 +47,9 @@ public final class MillWorld {
 				Millenaire.LOGGER.info("MillWorld: village '{}' {} (id={})",
 						t.name(), shouldBeActive ? "ACTIVATED" : "deactivated", t.id());
 				setVillageChunksForced(overworld, t.centre(), shouldBeActive);
+				if (shouldBeActive) {
+					t.setActiveSince(time); // start the repair grace window so saved villagers can load first
+				}
 			}
 			if (t.isActive()) {
 				active++;
@@ -60,14 +64,18 @@ public final class MillWorld {
 					Entity e = overworld.getEntity(m.id());
 					if (e instanceof MillVillagerEntity villager && villager.isAlive()) {
 						VillagerScheduler.tick(villager, overworld, t);
-					} else if (overworld.isLoaded(m.home())) {
-						// home chunk is loaded but the entity isn't anywhere -> it's gone -> repair (same UUID).
-						MillVillagerEntity villager = MillVillagerEntity.spawn(overworld, m.id(), m.name(), m.type(), m.home(), forceActiveForTest);
-						VillagerScheduler.tick(villager, overworld, t);
-						Millenaire.LOGGER.info("MillWorld: repaired missing villager '{}' ({}) at {} in '{}'",
-								m.name(), m.id(), m.home(), t.name());
+					} else if (overworld.isLoaded(m.home()) && time - t.activeSince() > REPAIR_GRACE_TICKS) {
+						// After a grace window (so saved entities have loaded), the entity is genuinely gone.
+						// Repair with the same UUID; if the add is rejected (UUID still present), leave it.
+						Optional<MillVillagerEntity> repaired =
+								MillVillagerEntity.spawn(overworld, m.id(), m.name(), m.type(), m.home(), forceActiveForTest);
+						if (repaired.isPresent()) {
+							VillagerScheduler.tick(repaired.get(), overworld, t);
+							Millenaire.LOGGER.info("MillWorld: repaired missing villager '{}' ({}) at {} in '{}'",
+									m.name(), m.id(), m.home(), t.name());
+						}
 					} else {
-						missing++; // home chunk not loaded yet; resolves once the forced chunk loads
+						missing++; // not loaded yet / within grace window — resolves shortly
 					}
 				}
 				if (report && missing > 0) {
@@ -89,6 +97,9 @@ public final class MillWorld {
 
 	/** Chunk radius (in chunks) force-loaded around an active village's centre. */
 	private static final int FORCE_CHUNK_RADIUS = 2;
+
+	/** Wait this many ticks after a village activates before repairing missing villagers, so saved entities can load first. */
+	private static final int REPAIR_GRACE_TICKS = 60;
 
 	/**
 	 * On server start, release any chunks left force-loaded by a previous session (#6). {@code active}

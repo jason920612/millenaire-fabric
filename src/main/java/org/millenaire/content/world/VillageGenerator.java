@@ -105,9 +105,12 @@ public final class VillageGenerator {
 				String vtype = typeKeys.isEmpty() ? "" : typeKeys.get(v % typeKeys.size());
 				String vname = capitalize(culture.name()) + " " + (vtype.isEmpty() ? "villager" : vtype) + " " + (v + 1);
 				// test-only invulnerable: survive headless construction so the scheduler can be exercised
-				MillVillagerEntity villager = MillVillagerEntity.spawn(level, null, vname, vtype, home, MillWorld.forceActiveForTest);
-				villagers++;
-				townHall.addVillager(new VillagerMember(villager.getUUID(), vname, vtype, home));
+				Optional<MillVillagerEntity> spawned =
+						MillVillagerEntity.spawn(level, null, vname, vtype, home, MillWorld.forceActiveForTest);
+				if (spawned.isPresent()) {
+					villagers++;
+					townHall.addVillager(new VillagerMember(spawned.get().getUUID(), vname, vtype, home));
+				}
 			}
 			Millenaire.LOGGER.info("  spawned {} villagers near centre {}", villagers, centreOrigin);
 		}

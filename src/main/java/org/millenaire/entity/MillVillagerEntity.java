@@ -1,5 +1,6 @@
 package org.millenaire.entity;
 
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -35,8 +36,12 @@ public class MillVillagerEntity extends PathfinderMob {
 		super(type, level);
 	}
 
-	/** Spawn (or re-spawn, for repair) a villager with a specific UUID, name, type and position. */
-	public static MillVillagerEntity spawn(ServerLevel level, UUID id, String name, String villagerType,
+	/**
+	 * Spawn (or re-spawn, for repair) a villager with a specific UUID, name, type and position.
+	 * Returns empty if the entity could not be added (e.g. the UUID already exists in the world) — the
+	 * caller must NOT treat a rejected entity as live.
+	 */
+	public static Optional<MillVillagerEntity> spawn(ServerLevel level, UUID id, String name, String villagerType,
 			BlockPos pos, boolean invulnerable) {
 		MillVillagerEntity v = new MillVillagerEntity(Millenaire.VILLAGER, level);
 		if (id != null) {
@@ -50,9 +55,11 @@ public class MillVillagerEntity extends PathfinderMob {
 		}
 		v.setInvulnerable(invulnerable);
 		if (!level.addFreshEntity(v)) {
-			Millenaire.LOGGER.warn("Failed to add villager '{}' (type {}) to the world at {}", name, villagerType, pos);
+			Millenaire.LOGGER.warn("Could not add villager '{}' (uuid {}) at {} — already present? Skipping.",
+					name, id, pos);
+			return Optional.empty();
 		}
-		return v;
+		return Optional.of(v);
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
