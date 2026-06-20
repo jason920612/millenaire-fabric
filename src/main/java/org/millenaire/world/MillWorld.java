@@ -82,6 +82,10 @@ public final class MillWorld {
 					Millenaire.LOGGER.info("MillWorld: village '{}' has {}/{} villager(s) not yet loaded",
 							t.name(), missing, t.villagers().size());
 				}
+				// Persist any crafting/production changes this tick.
+				if (t.consumeRuntimeDirty()) {
+					data.markChanged();
+				}
 			}
 		}
 		if (report) {

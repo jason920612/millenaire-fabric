@@ -2,7 +2,9 @@ package org.millenaire.world;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 
 /**
@@ -18,7 +20,7 @@ import net.minecraft.core.BlockPos;
  * @param pass        0 = main structure, 1 = secondStep (doors/torches/beds/...)
  * @param done        construction complete
  */
-public final class BuildingProject {
+public final class BuildingProject implements GoodsStore {
 
 	public static final Codec<BuildingProject> CODEC = RecordCodecBuilder.create(i -> i.group(
 			Codec.STRING.fieldOf("key").forGetter(b -> b.key),
@@ -31,7 +33,8 @@ public final class BuildingProject {
 			Codec.INT.fieldOf("pass").forGetter(b -> b.pass),
 			Codec.BOOL.fieldOf("done").forGetter(b -> b.done),
 			Codec.BOOL.optionalFieldOf("blocked", false).forGetter(b -> b.blocked),
-			Codec.STRING.listOf().optionalFieldOf("tags", List.of()).forGetter(b -> b.tags)
+			Codec.STRING.listOf().optionalFieldOf("tags", List.of()).forGetter(b -> b.tags),
+			Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("goods", Map.of()).forGetter(b -> b.goods)
 	).apply(i, BuildingProject::new));
 
 	private final String key;
@@ -47,9 +50,11 @@ public final class BuildingProject {
 	private boolean blocked;
 	/** The building's tags (from the plan's {@code tag:} fields) — used to resolve goal destinations. */
 	private final List<String> tags;
+	/** This building's own goods stock — what generic crafting in this building consumes/produces. */
+	private final Map<String, Integer> goods;
 
 	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation,
-			int cursor, int pass, boolean done, boolean blocked, List<String> tags) {
+			int cursor, int pass, boolean done, boolean blocked, List<String> tags, Map<String, Integer> goods) {
 		this.key = key;
 		this.variant = variant;
 		this.role = role;
@@ -61,12 +66,34 @@ public final class BuildingProject {
 		this.done = done;
 		this.blocked = blocked;
 		this.tags = List.copyOf(tags);
+		this.goods = new HashMap<>(goods);
 	}
 
 	/** A fresh, unbuilt project. */
 	public BuildingProject(String key, String variant, String role, BlockPos origin, int level, int orientation,
 			List<String> tags) {
-		this(key, variant, role, origin, level, orientation, 0, 0, false, false, tags);
+		this(key, variant, role, origin, level, orientation, 0, 0, false, false, tags, new HashMap<>());
+	}
+
+	@Override
+	public int countGood(String good) {
+		return goods.getOrDefault(good.toLowerCase(java.util.Locale.ROOT), 0);
+	}
+
+	@Override
+	public void addGood(String good, int qty) {
+		goods.merge(good.toLowerCase(java.util.Locale.ROOT), qty, Integer::sum);
+	}
+
+	@Override
+	public boolean removeGood(String good, int qty) {
+		String k = good.toLowerCase(java.util.Locale.ROOT);
+		int have = goods.getOrDefault(k, 0);
+		if (have < qty) {
+			return false;
+		}
+		goods.put(k, have - qty);
+		return true;
 	}
 
 	public List<String> tags() {

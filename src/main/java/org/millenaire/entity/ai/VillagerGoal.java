@@ -30,4 +30,13 @@ public interface VillagerGoal {
 
 	/** When true, the scheduler is free to pick a new goal. */
 	boolean isFinished(MillVillagerEntity v, ServerLevel level, TownHall townHall);
+
+	/**
+	 * Leisure goals (chat / drink / pray / socialise / rest, and idle filler) yield to any possible
+	 * non-leisure goal (intent doc 01 §2.2.5 / §3.6): "work first, play only when idle". The scheduler
+	 * drops all leisure goals whenever any non-leisure goal is possible.
+	 */
+	default boolean isLeisure() {
+		return false;
+	}
 }

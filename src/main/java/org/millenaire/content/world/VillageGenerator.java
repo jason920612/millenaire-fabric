@@ -118,10 +118,11 @@ public final class VillageGenerator {
 			Millenaire.LOGGER.info("  spawned {} villagers near centre {}", villagers, centreOrigin);
 		}
 
-		// Test seed: give the village some raw goods so a crafting villager can actually work
+		// Test seed: stock the centre (home) building with raw goods so a crafting villager can work
 		// (e.g. alchemistapprentice -> makeglassbottles needs glass). Real production chains feed this later.
 		if (MillWorld.forceActiveForTest) {
-			townHall.addGood("glass", 200);
+			townHall.buildings().stream().filter(b -> b.role().equals("centre")).findFirst()
+					.ifPresent(b -> b.addGood("glass", 200));
 		}
 
 		// Register the Town Hall aggregate into the MillWorld persistent index (single source of truth).

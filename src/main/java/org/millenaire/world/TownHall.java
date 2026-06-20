@@ -19,7 +19,7 @@ import net.minecraft.core.UUIDUtil;
  *
  * <p>Persistent fields are serialized via {@link #CODEC}; {@code active} is runtime-only.
  */
-public final class TownHall {
+public final class TownHall implements GoodsStore {
 
 	public static final Codec<TownHall> CODEC = RecordCodecBuilder.create(i -> i.group(
 			UUIDUtil.CODEC.fieldOf("id").forGetter(t -> t.id),
@@ -44,6 +44,8 @@ public final class TownHall {
 
 	/** Runtime only — not persisted. */
 	private transient boolean active;
+	/** Set when persistent village state changed this tick (e.g. crafting); consumed by MillWorld to mark dirty. */
+	private transient boolean runtimeDirty;
 	/** Game time at which this village last became active (runtime only) — used as a repair grace window. */
 	private transient long activeSince;
 
@@ -65,8 +67,20 @@ public final class TownHall {
 				new ArrayList<>(), new ArrayList<>(), new HashMap<>());
 	}
 
-	// --- goods inventory (generic crafting) ---------------------------------------------------
+	/** Flag that persistent state changed (e.g. a craft); MillWorld consumes it to mark the SavedData dirty. */
+	public void markRuntimeDirty() {
+		this.runtimeDirty = true;
+	}
 
+	public boolean consumeRuntimeDirty() {
+		boolean d = runtimeDirty;
+		runtimeDirty = false;
+		return d;
+	}
+
+	// --- goods inventory (village-wide stock; building stock lives on BuildingProject) ---------
+
+	@Override
 	public int countGood(String good) {
 		return goods.getOrDefault(good.toLowerCase(java.util.Locale.ROOT), 0);
 	}

@@ -54,9 +54,24 @@ public final class VillagerScheduler {
 	}
 
 	private static VillagerGoal selectBest(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
+		List<VillagerGoal> candidates = candidatesFor(v, townHall);
+
+		// Leisure yields to work (intent doc 01 §2.2.5 / §3.6): if any non-leisure goal is possible,
+		// drop all leisure goals from the selection — so villagers only chat/drink/pray/rest when idle.
+		boolean workAvailable = false;
+		for (VillagerGoal g : candidates) {
+			if (!g.isLeisure() && g.isPossible(v, level, townHall)) {
+				workAvailable = true;
+				break;
+			}
+		}
+
 		VillagerGoal best = null;
 		int bestPriority = Integer.MIN_VALUE;
-		for (VillagerGoal g : candidatesFor(v, townHall)) {
+		for (VillagerGoal g : candidates) {
+			if (workAvailable && g.isLeisure()) {
+				continue;
+			}
 			if (!g.isPossible(v, level, townHall)) {
 				continue;
 			}

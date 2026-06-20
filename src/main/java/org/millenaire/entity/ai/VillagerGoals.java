@@ -6,8 +6,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import java.util.Set;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.millenaire.entity.MillVillagerEntity;
+import org.millenaire.entity.ai.combat.CombatGoals;
+import org.millenaire.entity.ai.goals.GetToolGoal;
+import org.millenaire.entity.ai.goals.SleepGoal;
 import org.millenaire.world.BuildingProject;
 import org.millenaire.world.TownHall;
 
@@ -33,11 +37,27 @@ public final class VillagerGoals {
 	/** Data-driven goals referenced by villager types, materialised on demand (one singleton per key). */
 	private static final Map<String, VillagerGoal> GENERIC_CACHE = new ConcurrentHashMap<>();
 
+	/** Content goal keys that are leisure (chat / drink / pray / socialise / rest / play). */
+	private static final Set<String> LEISURE_KEYS = Set.of(
+			"chat", "godrink", "gopray", "gosocialise", "gorest", "goplay", "meditate");
+
 	static {
+		// Always-available behaviours (intent doc 01 §2.4/§10: sleep auto-appended to everyone;
+		// gettool when tools are needed; combat driven by the village's underAttack state).
+		register(new SleepGoal());
+		register(new GetToolGoal());
+		register(new CombatGoals.DefendVillage());
+		register(new CombatGoals.RaidVillage());
+		register(new CombatGoals.Hide());
+		// Filler / leisure fallbacks (yield to work).
 		register(new Idle());
 		register(new Wander());
 		register(new GoToTownHall());
 		register(new ObserveConstruction());
+	}
+
+	public static boolean isLeisureKey(String key) {
+		return key != null && LEISURE_KEYS.contains(key.toLowerCase(Locale.ROOT));
 	}
 
 	private VillagerGoals() {
@@ -90,6 +110,10 @@ public final class VillagerGoals {
 			return IDLE;
 		}
 
+		public boolean isLeisure() {
+			return true;
+		}
+
 		public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall th) {
 			return true;
 		}
@@ -110,6 +134,10 @@ public final class VillagerGoals {
 	static final class Wander implements VillagerGoal {
 		public String key() {
 			return WANDER;
+		}
+
+		public boolean isLeisure() {
+			return true;
 		}
 
 		public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall th) {
@@ -142,6 +170,10 @@ public final class VillagerGoals {
 			return GO_TO_TOWNHALL;
 		}
 
+		public boolean isLeisure() {
+			return true;
+		}
+
 		public boolean isPossible(MillVillagerEntity v, ServerLevel level, TownHall th) {
 			return distSq(v, th.centre()) > 6 * 6;
 		}
@@ -165,6 +197,10 @@ public final class VillagerGoals {
 	static final class ObserveConstruction implements VillagerGoal {
 		public String key() {
 			return OBSERVE_CONSTRUCTION;
+		}
+
+		public boolean isLeisure() {
+			return true;
 		}
 
 		private BuildingProject underConstruction(TownHall th) {

@@ -173,7 +173,12 @@
      - destination：buildingTag→tagged 建築；無→**home 建築**；requiredTag 篩該建築（house 也套）。
      - `BuildingResManagers` 從 schematic special points 抽 `ResManager`（craftingPos/mainChest/sleepingPos/sellingPos）；目的地優先用 craftingPos，否則建築 origin。實測：`largefort_A` mainChest=1/sleepingPos=1/sellingPos=1。
      - `GenericCrafting`：解析 `input/output/buildinglimit`（`GoodStack`）；村民抵達 home 建築後扣 input、加 output 到 `TownHall` goods 庫存；isPossible 以「有原料且未達上限」gating。**實測**：alchemistapprentice 把 glass×3→bottle×1 連續做到 **bottle=64（buildinglimit）後停下並切換 goal**（64 次，第一個真正生產循環）。
-   - **未達**：goods 持久化（craft 增減目前 in-memory，需 markChanged 接線）、harvest/plant/cook 行為、home 建築指派（目前 stub=村中心）、走到 craftingPos 的精確站位（目前用建築範圍 arrival）、其餘內容 DSL（shops/namelists/languages/quests/traded_goods）。
+   - **採納子代理審查的 P1 修補（2026-06-20）**：
+     - **leisure 讓位於工作閘門**（doc01 §3.6）：`VillagerGoal.isLeisure()` + scheduler 兩段選擇——有任一非 leisure 可做就濾掉所有 leisure。**實測**：有 work 的村民做 work（makeglassbottles→plantwarts→deliver）、無 work 的村民才 leisure（gopray/godrink）。
+     - **sleep/gettool/combat 接線**（doc01 §2.4/§7）：註冊進候選（sleep 恆有、非 leisure、priority 60）。**夜間作息實測**：`/time set night` 後三村民全部 `goal -> sleep`。
+     - **crafting 庫存層級修正**（doc01 §5.1）：goods 從全村單一庫存下放到 **`BuildingProject` per-building 庫存**（`GoodsStore` 介面）；input/output/buildinglimit 都查「該工作建築」。**實測**：building stock bottle 1→64（buildinglimit）後停。
+     - **持久化接線**：craft 後 `TownHall.markRuntimeDirty()` → `MillWorld` 消費 → `MillWorldData.markChanged()`。
+   - **未達**：四道通用閘門中 townhalllimit/maxsimultaneoustotal/maxsimultaneousinbuilding/itemsbalance 仍未解析（DSL 靜默丟棄，子代理 P2-3）；harvest/plant/cook 真實行為；home 建築指派（stub=村中心）；走到 craftingPos 精確站位（arrival 半徑偏寬）；vrecords 家族/性別/婚姻、relations/UserProfile 持久化；其餘內容 DSL。
 9. **剩餘工作（全功能對等的長路）**：
    - **L3 建造系統**：村民逐塊蓋建築（非瞬間放置）、升級階 `_A→_B`、道路/朝向佈局。
    - **L4 完整 NPC**：資料驅動 goal 排程器（單一最高優先序湧現）、職業/作息/生產/繁衍、原生 pathfinding + per-goal 設定。

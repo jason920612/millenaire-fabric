@@ -39,6 +39,12 @@ public final class FakePlayerProbe {
 				// Force all villages active so headless construction proceeds without an online player.
 				org.millenaire.world.MillWorld.forceActiveForTest = true;
 
+				// Optional: force night to verify the sleep routine (24000-tick day is too long to wait).
+				if (System.getenv("MILLENAIRE_NIGHT") != null) {
+					server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "time set night");
+					Millenaire.LOGGER.info("Self-test: forced night (time set night) for sleep verification");
+				}
+
 				// Persistence check: villages + construction progress that survived previous runs.
 				org.millenaire.world.MillWorldData world = org.millenaire.world.MillWorldData.get(level);
 				int existing = world.townHallCount();
@@ -88,6 +94,13 @@ public final class FakePlayerProbe {
 					Millenaire.LOGGER.info("Gating check: makejgboots(requiredTag=armoury)={} (expect false), "
 							+ "makecalva(buildingTag=cider)={} (expect false), cookindianbrick(townhall)={} (expect true)",
 							reqOnly, buildingDest, townhall);
+
+					// Routine-goal registration check (audit P1-4): sleep/gettool/combat must be candidates now.
+					Millenaire.LOGGER.info("Routine goals registered: sleep={}, gettool={}, defendvillage={}; sleep.isLeisure={}",
+							org.millenaire.entity.ai.VillagerGoals.byKey("sleep") != null,
+							org.millenaire.entity.ai.VillagerGoals.byKey("gettool") != null,
+							org.millenaire.entity.ai.VillagerGoals.byKey("defendvillage") != null,
+							org.millenaire.entity.ai.VillagerGoals.byKey("sleep").isLeisure());
 
 					// ResManager self-check: extract named work positions from the centre building's schematic.
 					th0.buildings().stream().filter(b -> b.role().equals("centre")).findFirst().ifPresent(centreB ->

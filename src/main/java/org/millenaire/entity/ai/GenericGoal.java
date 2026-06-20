@@ -13,6 +13,7 @@ import org.millenaire.content.building.BuildingPlan;
 import org.millenaire.content.economy.GoodStack;
 import org.millenaire.entity.MillVillagerEntity;
 import org.millenaire.world.BuildingProject;
+import org.millenaire.world.GoodsStore;
 import org.millenaire.world.TownHall;
 
 /**
@@ -35,6 +36,11 @@ public final class GenericGoal implements VillagerGoal {
 		return def.key();
 	}
 
+	@Override
+	public boolean isLeisure() {
+		return VillagerGoals.isLeisureKey(def.key());
+	}
+
 	private boolean isBuildingDestination() {
 		return !def.destinationTag().isEmpty() && !GenericGoalDefinition.TOWNHALL.equals(def.destinationTag());
 	}
@@ -45,6 +51,14 @@ public final class GenericGoal implements VillagerGoal {
 			return townHall.findBuildingByTag(def.destinationTag(), def.requiredTag());
 		}
 		return townHall.memberFor(v.getUUID()).flatMap(townHall::homeBuildingFor);
+	}
+
+	/** The goods stock this goal draws from / fills: the village (townhall goals) or the work building. */
+	private GoodsStore storeFor(MillVillagerEntity v, TownHall townHall) {
+		if (GenericGoalDefinition.TOWNHALL.equals(def.destinationTag())) {
+			return townHall;
+		}
+		return destinationBuilding(v, townHall).map(b -> (GoodsStore) b).orElse(townHall);
 	}
 
 	@Override
@@ -61,11 +75,12 @@ public final class GenericGoal implements VillagerGoal {
 		}
 		// Crafting gating: must have all inputs and be under the building limit (docs' "produce until full").
 		if (def.isCrafting()) {
-			if (!def.limitGood().isEmpty() && townHall.countGood(def.limitGood()) >= def.limitMax()) {
+			GoodsStore store = storeFor(v, townHall);
+			if (!def.limitGood().isEmpty() && store.countGood(def.limitGood()) >= def.limitMax()) {
 				return false;
 			}
 			for (GoodStack in : def.inputs()) {
-				if (townHall.countGood(in.good()) < in.qty()) {
+				if (store.countGood(in.good()) < in.qty()) {
 					return false;
 				}
 			}
@@ -127,26 +142,28 @@ public final class GenericGoal implements VillagerGoal {
 	}
 
 	private boolean craft(MillVillagerEntity v, ServerLevel level, TownHall townHall) {
-		if (!def.limitGood().isEmpty() && townHall.countGood(def.limitGood()) >= def.limitMax()) {
+		GoodsStore store = storeFor(v, townHall);
+		if (!def.limitGood().isEmpty() && store.countGood(def.limitGood()) >= def.limitMax()) {
 			return false;
 		}
 		for (GoodStack in : def.inputs()) {
-			if (townHall.countGood(in.good()) < in.qty()) {
+			if (store.countGood(in.good()) < in.qty()) {
 				return false;
 			}
 		}
 		for (GoodStack in : def.inputs()) {
-			townHall.removeGood(in.good(), in.qty());
+			store.removeGood(in.good(), in.qty());
 		}
 		for (GoodStack out : def.outputs()) {
-			townHall.addGood(out.good(), out.qty());
+			store.addGood(out.good(), out.qty());
 		}
+		townHall.markRuntimeDirty(); // persist the crafted goods (MillWorld marks the SavedData dirty)
 		if (Millenaire.LOG_VILLAGER_GOALS) {
 			String ins = def.inputs().stream().map(g -> g.good() + "×" + g.qty()).collect(Collectors.joining("+"));
 			String outs = def.outputs().stream().map(g -> g.good() + "×" + g.qty()).collect(Collectors.joining("+"));
 			String first = def.outputs().isEmpty() ? "" : def.outputs().get(0).good();
-			Millenaire.LOGGER.info("Crafted '{}': {} -> {} by {} (stock {}={})",
-					def.key(), ins, outs, v.getName().getString(), first, townHall.countGood(first));
+			Millenaire.LOGGER.info("Crafted '{}': {} -> {} by {} (building stock {}={})",
+					def.key(), ins, outs, v.getName().getString(), first, store.countGood(first));
 		}
 		return true;
 	}
